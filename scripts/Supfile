@@ -1,0 +1,116 @@
+---
+version: 0.4
+
+networks:
+  workers:
+    env:
+      SWARM_TOKEN: "$SWARM_TOKEN"
+      SWARM_MANAGER: "$SWARM_MANAGER"
+    inventory: ./do-inventory.sh "$PROJECT-worker" root
+  managers:
+    inventory: ./do-inventory.sh "$PROJECT-manager" root
+            
+commands:
+
+  install-docker:
+    desc: Install docker daemon
+    run: |-
+      dpkg --remove docker docker-engine docker.io && apt-get -y update && \
+      apt-get -y install \
+        apt-transport-https ca-certificates \
+        curl gnupg2 software-properties-common && \
+      bash -c 'curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -' && \
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
+      apt-get -y update && \
+      apt-get -y install docker-ce 
+      
+  init-swarm-manager:
+    desc: Initialize docker swarm manager
+    #
+    # uses eth1 on host which matches digital ocean private network convention
+    #
+    run: |-
+      docker swarm init --advertise-addr $(/sbin/ifconfig eth1 | grep 'inet ' | cut -d' ' -f10) && \
+      docker network create -d overlay net1
+    once: true
+
+  join-swarm:
+    desc: Joins docker swarm cluster
+    run: docker swarm join --token "$SWARM_TOKEN" "$SWARM_MANAGER" || true
+
+  swarm-info:
+    desc: Runs docker info and node ls
+    run: echo "docker node ls:" && docker node ls && echo "" && echo "docker service ls:" && docker service ls
+    once: true
+
+  logs:
+    desc: Fetches logs for services
+    run: docker service logs demo_ui && docker service logs demo_counter
+
+  build-services:
+    desc: Build docker images for services
+    local: ./build.sh
+
+  docker-ps:
+    desc: Runs docker ps
+    run: docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
+
+  create-services:
+    desc: Create docker services on swarm
+    run: |-
+      sudo docker service create --network net1 --mode global \
+        --publish mode=host,target=9000,published=80 \
+        --health-cmd='wget -q -O - http://localhost:9000/ || exit 1' \
+        --health-start-period=1s \
+        --name swarm-demo_parent docker.io/coopernurse/swarm-demo-parent && \
+      sudo docker service create --network net1 --replicas 3 \
+        --publish 9000 \
+        --health-cmd='wget -q -O - http://localhost:9000/env || exit 1' \
+        --health-start-period=1s \
+        --name swarm-demo_child docker.io/coopernurse/swarm-demo-child
+
+  update-services:
+    desc: Update docker services on swarm
+    run: |-
+      sudo docker service update --detach \
+        --update-order=start-first \
+        --image docker.io/coopernurse/swarm-demo-parent swarm-demo_parent
+      sudo docker service update --detach \
+        --update-order=start-first \
+        --image docker.io/coopernurse/swarm-demo-child swarm-demo_child
+
+  upload-stacks:
+    desc: Uploads stack yml files
+    upload:
+      - src: visualizer-stack.yml
+        dst: /tmp
+      - src: demo-stack.yml
+        dst: /tmp
+
+  deploy-visualizer-stack:
+    desc: deploys visualizer docker stack
+    run: docker stack deploy -c /tmp/visualizer-stack.yml visualizer
+    once: true
+    
+  deploy-demo-stack:
+    desc: deploys demo docker stack
+    run: docker stack deploy -c /tmp/demo-stack.yml demo
+    once: true
+
+  rm-demo-stack:
+    desc: removes demo docker stack
+    run: docker stack rm demo
+    once: true
+    
+targets:
+  deploy-visualizer:
+    - upload-stacks
+    - deploy-visualizer-stack
+
+  deploy-demo:
+    - upload-stacks
+    - deploy-demo-stack
+
+  build-update:
+    - build-services
+    - update-services

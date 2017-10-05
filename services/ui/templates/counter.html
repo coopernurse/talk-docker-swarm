@@ -1,0 +1,33 @@
+<table cellpadding="2">
+  <tr>
+    <td>Last updated:</td><td>{{ .date }}</td>
+  </tr>
+  <tr>
+    <td>Request count:</td><td>{{ .state.RequestCount }}</td>
+  </tr>    
+  <tr>
+    <td>Error count:</td><td>{{ .state.ErrorCount }}</td>
+  </tr>  
+  <tr>
+    <td>Last error:</td><td>{{ .state.LastError }}</td>
+  </tr>
+</table>
+
+<br/>
+
+<table border="1" cellpadding="5">
+  <tr>
+    <th>counter host</th>
+    <th>counter start time</th>
+    <th>version</th>    
+    <th>requests</th>
+  </tr>
+  {{ range $index, $val := .state.RecentResponses }}
+  <tr>
+    <td>{{ $val.Hostname }}</td>
+    <td>{{ $val.ChildStartTime }}</td>    
+    <td>{{ $val.Version }}</td>
+    <td>{{ $val.RequestCount }}</td>
+  </tr>
+  {{ end }}
+</table>

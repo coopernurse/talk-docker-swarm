@@ -1,0 +1,65 @@
+version: "3.4"
+
+networks:
+  net1:
+    external:
+      name: net1
+      
+services:
+  ui:
+    image: docker.io/coopernurse/swarm-demo-ui
+    build: ui/
+    ports:
+      - target: 9000
+        published: 80
+        protocol: tcp
+        mode: host
+    networks:
+      - net1      
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9000/ || exit 1"]
+    deploy:
+      mode: global
+      update_config:
+        parallelism: 2
+        delay: 2s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+      
+  counter:
+    image: docker.io/coopernurse/swarm-demo-counter
+    build: counter/
+    ports:
+      - "9000"
+    networks:
+      - net1
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9000/env || exit 1"]
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 2s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+
+  clock:
+    image: docker.io/coopernurse/swarm-demo-clock
+    build: clock/
+    ports:
+      - "9000"
+    networks:
+      - net1
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9000/ || exit 1"]
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 2s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+              

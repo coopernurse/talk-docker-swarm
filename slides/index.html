@@ -1,0 +1,308 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Distributed Systems with Docker Swarm</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/sky.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+    <style>
+     .reveal .footer {
+        position: absolute;
+        bottom: 1em;
+        left: 1em;
+        font-size: 0.5em;
+     }
+    </style>
+	</head>
+	<body>
+		<div class="reveal">
+      <div class="footer">
+        <!-- <img src="images/output.png"> -->
+        https://github.com/coopernurse/talk-docker-swarm/
+      </div>
+      
+			<div class="slides">
+				<section>
+            <h2>Distributed Systems with Docker Swarm</h2>
+
+            <p>James Cooper - james@bitmechanic.com</p>
+            <p><a href="http://www.bitmechanic.com/">http://www.bitmechanic.com/</a></p>
+            <p><a href="https://github.com/coopernurse/">https://github.com/coopernurse/</a></p>
+        </section>
+        
+				<section>
+          <h2>Agenda</h2>
+
+          <ul>
+            <li>Concepts
+              <ul>
+                <li>Docker</li>
+                <li>Swarm</li>
+                <li>Questions?</li>
+              </ul>
+            <li>Demo
+              <ul>
+                <li>Create cluster</li>
+                <li>Deploy stack</li>
+                <li>Rolling update</li>
+                <li>Questions?</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Docker is a...</h2>
+
+          <ul>
+            <li class="fragment">...client/server app</li>
+            <li class="fragment">...for building <b>images</b></li>
+            <li class="fragment">...and running images as <b>containers</b></li>
+            <li class="fragment">...in a fully <b>isolated</b> manner</li>
+          </ul>
+          
+        </section>
+
+        <section>
+          <h2>Images and Containers</h2>
+
+          <p><img src="images/docker-concepts.png"></p>
+
+          <p style="font-size: medium">(source: https://docs.docker.com/get-started/)</p>
+        </section>
+        
+        <section>
+          <h2>Creating Images</h2>
+
+          <p style="text-align: left; font-size: 26px;">The most common way to create a Docker 
+            image is to write a <b>Dockerfile</b>.  This file contains the list 
+            of commands to run to create the image.  Each command produces a <b>layer</b>
+            which is an immutable set of filesystem modifications.</p>
+
+          <p style="text-align: left; font-size: 26px;">Consquently, an image is a linked list of <b>layers</b>.<p>
+        </section>
+
+        <section>
+
+          <h2>Dockerfile Example</h2>
+
+          <pre><code data-trim data-noescape>
+              # Dockerfile for coopernurse/hello-docker
+              # Using debian as base - see: https://hub.docker.com/
+              FROM debian:stretch
+
+              RUN apt update && apt install -y python && apt clean
+              CMD ["python", "-c", "print 'hello docker'"]
+          </code></pre>
+
+          <hr />
+
+          <pre><code data-trim data-noescape>
+              # build image
+              $ sudo docker build -t coopernurse/hello-docker .
+
+              # run container
+              $ sudo docker run --rm coopernurse/hello-docker
+
+              # list layers in image
+              $ sudo docker history coopernurse/hello-docker
+          </code></pre>
+          
+        </section>
+
+        <section>
+          <h2>docker run options</h2>
+
+          <ul>
+            <li>Expose ports: <code>-p</code></li>
+            <li>Expose host directories: <code>-v</code></li>
+            <li>Constrain CPU / RAM usage</li>
+            <li>Specify environment variables</li>
+            <li>Specify initial command to run</li>
+            <li>Specify where logs should go</li>
+          </ul>
+
+        </section>
+
+        <section>
+          <h2>Questions?</h2>
+
+          <p>Next we'll introduce Swarm, which is a way
+            to cluster multiple docker hosts together.</p>
+
+        </section>
+
+        <section>
+          <h2>Swarm is...</h2>
+
+          <ul>
+            <li class="fragment">...a way to cluster Docker daemons together</li>
+            <li class="fragment">...and run <b>services</b> and <b>stacks</b> on them</li>
+            <li class="fragment">...in a <b>declarative</b> manner</li>
+            <li class="fragment">...without installing any additional tools</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Node Types</h2>
+
+          <ul>
+            <li><b>manager</b> - receives service and stack commands, stores that state,
+              and directs workers as appropriate so that running cluster state matches
+              the service and stacks specified</li>
+            
+            <li><b>worker</b> - starts/stops containers when instructed by a manager.
+              reports container status to managers.</li>
+          </ul>
+
+          <p>
+            NOTE: All managers are ALSO workers
+          </p>
+          
+        </section>
+        
+        <section>
+          <h2>Enabling Swarm</h2>
+
+          <pre><code data-trim data-noescape>
+              # Run on manager node - this will output a SWARM_TOKEN
+              docker swarm init --advertise-addr [ip-addr]
+              
+              # Run on worker nodes
+              # use the token and ip-addr from command above
+              docker swarm join --token [swarm-token] [ip-addr]
+          </code></pre>
+
+        </section>
+
+        <section>
+          <h2>Services</h2>
+          
+          <p style="text-align: left;">
+            Defines container to run on one or more nodes in the swarm
+          </p>
+
+          <ul>
+            <li>Supports most "docker run" options</li>
+            <li>Can specify to run on all nodes, or a target number</li>
+            <li>Can optionally attach to an ingress network</li>
+          </ul>
+
+          <pre><code data-trim data-noescape>
+              $ docker service create --replicas 3 --name myservice myimage
+              $ docker service ls
+              $ docker service rm myservice
+          </pre></code>
+              
+        </section>
+
+        <section>
+          <h2>Stacks</h2>
+
+          <p style="text-align: left;">
+            A collection of services defined in a single YAML file
+          </p>
+
+          <ul>
+            <li>Uses the Docker Compose YAML format</li>
+            <li>Start/update/stop whole stack with one command</li>
+          </ul>
+
+          <pre><code data-trim data-noescape>
+              $ docker stack deploy --compose-file demo.yml swarm-demo
+              $ docker stack ls
+              $ docker stack rm swarm-demo
+          </pre></code>
+        </section>
+
+        <section>
+          <h2>Ingress Load Balancing</h2>
+
+          <p>My favorite feature!</p>
+          
+          <ul>
+            <li>Overlay network</li>
+            <li>Exposes DNS based on service name</li>
+            <li>Avoids port collisions</li>
+            <li>Provides load balancing</li>
+            <li>Zero downtime updates (almost!)</li>
+          </ul>
+        </section>        
+
+        <section>
+          <h2>Questions?</h2>
+
+          <p style="text-align: left;">Next we'll jump into a demo
+            where we'll boot a 3 node cluster on Digital Ocean,
+            start a stack, and try doing some rolling updates.</p>
+
+        </section>
+
+        <section>
+          <h2>Demo App</h2>
+          
+          <p><img src="images/demo-app.png"></p>
+          
+        </section>
+
+        <section>
+          <h2>Tools</h2>
+
+          <p style="text-align: left;">The demo will use the <b>doctl</b> CLI
+            provided by Digital Ocean, and the <b>sup</b>
+            tool to run ssh commands against the VMs</p>
+
+          <p style="text-align: left;">Both tools are written in Go and install as
+            single file executables with no dependencies.</p>
+          
+          <ul>
+            <li><a href="https://github.com/digitalocean/doctl">https://github.com/digitalocean/doctl</a></li>
+            <li><a href="https://pressly.github.io/sup/">https://pressly.github.io/sup/</a></li>
+          </ul>
+        </section>
+        
+        <section>
+          <h2>Open Issues</h2>
+
+          <ul>
+            <li><a href="https://github.com/moby/moby/issues/30321">moby #30321 - Zero-downtime rolling updates</a> - probably fixed by: <a href="https://github.com/docker/libnetwork/pull/1824">libnetwork #1824</a></li>
+            <li></li>
+          </ul>
+          
+        </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
