@@ -11,7 +11,7 @@ import (
 	"github.com/dinever/golf"
 )
 
-const VERSION = "1.18"
+const VERSION = "1"
 
 func newCounter() *Counter {
 	return &Counter{

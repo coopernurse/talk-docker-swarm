@@ -1,18 +1,25 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">  
   <head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">    
     <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
     <script src="https://intercoolerreleases-leaddynocom.netdna-ssl.com/intercooler-1.1.2.min.js"></script>
     <title></title>
   </head>
   <body>
 
-    <h1>Docker Swarm Demo</h1>
+    <div class="container">
+      <h1>Docker Swarm Demo</h1>
 
-    <div ic-poll="200ms" ic-src="/fragment/counter"></div>
-
-    <div>
-      <b>clock:</b>
-      <pre ic-poll="200ms" ic-src="/fragment/clock"></pre>
+      <div class="row">
+        <div ic-poll="200ms" ic-src="/fragment/counter"></div>
+      </div>
+      
+      <div class="row">
+        <b>clock:</b>
+        <pre ic-poll="500ms" ic-src="/fragment/clock"></pre>
+      </div>
+      
     </div>
     
   </body>

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -70,9 +71,22 @@ type Counter struct {
 	Version       string
 }
 
+func newHttpClient() *http.Client {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   time.Second * 5,
+			KeepAlive: 0,
+		}).Dial,
+	}
+	return &http.Client{
+		Transport: transport,
+	}
+}
+
 func requestChild(token string, loc *time.Location) (ChildResponse, error) {
 	url := "http://demo_counter:9000/" + token
-	resp, err := http.Get(url)
+	resp, err := newHttpClient().Get(url)
 	if err != nil {
 		return ChildResponse{}, err
 	}
@@ -136,7 +150,7 @@ func homeHandler(ctx *golf.Context) {
 func clockFragHandler(ctx *golf.Context) {
 	var clockData string
 	url := "http://demo_clock:9000/"
-	resp, err := http.Get(url)
+	resp, err := newHttpClient().Get(url)
 	if err != nil {
 		clockData = fmt.Sprintf("ERROR from clock service: %v", err)
 	} else {
@@ -150,6 +164,7 @@ func clockFragHandler(ctx *golf.Context) {
 }
 
 func main() {
+	// turn off keepalive to see round-robin requests
 	rand.Seed(time.Now().UTC().UnixNano())
 	childState := newChildState()
 	app := golf.New()

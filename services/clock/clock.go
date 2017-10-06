@@ -7,7 +7,7 @@ import (
 	"github.com/dinever/golf"
 )
 
-const VERSION = "clock-3"
+const VERSION = "1"
 
 func clock(ctx *golf.Context) {
 	ctx.SetHeader("content-type", "text/plain")

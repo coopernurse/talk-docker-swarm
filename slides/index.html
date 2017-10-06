@@ -53,14 +53,13 @@
               <ul>
                 <li>Docker</li>
                 <li>Swarm</li>
-                <li>Questions?</li>
               </ul>
             <li>Demo
               <ul>
                 <li>Create cluster</li>
                 <li>Deploy stack</li>
                 <li>Rolling update</li>
-                <li>Questions?</li>
+                <li>Cluster abuse</li>
               </ul>
             </li>
           </ul>
@@ -231,6 +230,28 @@
         </section>
 
         <section>
+          <h2>Example Compose File</h2>
+
+          <pre><code data-trim data-noescape>
+version: "3.4"
+      
+services:
+  counter:
+    image: docker.io/coopernurse/swarm-demo-counter
+    ports:
+      - "9000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9000"]
+    deploy:
+      replicas: 2
+      update_config:
+        order: start-first
+      restart_policy:
+        condition: on-failure
+          </code></pre>
+        </section>
+
+        <section>
           <h2>Ingress Load Balancing</h2>
 
           <p>My favorite feature!</p>
@@ -275,16 +296,41 @@
             <li><a href="https://pressly.github.io/sup/">https://pressly.github.io/sup/</a></li>
           </ul>
         </section>
-        
+
         <section>
-          <h2>Open Issues</h2>
+          <h2>Demo Caveats</h2>
 
           <ul>
-            <li><a href="https://github.com/moby/moby/issues/30321">moby #30321 - Zero-downtime rolling updates</a> - probably fixed by: <a href="https://github.com/docker/libnetwork/pull/1824">libnetwork #1824</a></li>
-            <li></li>
+            <li>No firewall between nodes</li>
+            <li>No encryption between services</li>
           </ul>
+        </section>
+
+        <section>
+          <h2>Enough Talk</h2>
+
+          <p>Let's swarm</p>
           
         </section>
+        
+        <section>
+          <h2>Swarm Open Issues</h2>
+
+          <p style="text-align: left;">Issues that impact zero downtime rolling updates</p>
+          
+          <ul>
+            <li><a href="https://github.com/moby/moby/issues/30321">moby #30321 - Zero-downtime rolling updates</a> - probably fixed by: <a href="https://github.com/docker/libnetwork/pull/1824">libnetwork #1824</a></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Thank You!</h2>
+
+            <p>James Cooper - james@bitmechanic.com</p>
+            <p><a href="http://www.bitmechanic.com/">http://www.bitmechanic.com/</a></p>
+            <p><a href="https://github.com/coopernurse/">https://github.com/coopernurse/</a></p>          
+        </section>
+        
 			</div>
 		</div>
 
