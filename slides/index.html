@@ -59,7 +59,7 @@
                 <li>Create cluster</li>
                 <li>Deploy stack</li>
                 <li>Rolling update</li>
-                <li>Cluster abuse</li>
+                <li>Abuse the cluster</li>
               </ul>
             </li>
           </ul>
@@ -111,7 +111,7 @@
 
           <hr />
 
-          <pre><code data-trim data-noescape>
+          <pre><code data-trim class="bash">
               # build image
               $ sudo docker build -t coopernurse/hello-docker .
 
@@ -122,6 +122,18 @@
               $ sudo docker history coopernurse/hello-docker
           </code></pre>
           
+        </section>
+
+        <section>
+          <h2>Image Layers</h2>
+
+          <ul>
+            <li>Layers are <b>immutable</b></li>
+            <li>Each layer represents a set of changes to the previous layer</li>
+            <li>"docker build" creates separate layers for each build step</li>            
+            <li>Cached layers are skipped during builds</li>
+            <li>A change to parent invalidates children</li>
+          </ul>
         </section>
 
         <section>
@@ -170,21 +182,36 @@
           </ul>
 
           <p>
-            NOTE: All managers are ALSO workers
+            NOTE: By default, managers are ALSO workers
           </p>
           
+        </section>
+
+        <section>
+          <h2>Fault Tolerance</h2>
+
+          <p><b>Majority</b> of manager nodes must stay healthy</p>
+          
+          <ul>
+            <li>Hinges on manager nodes</li>
+            <li>Managers need to advertise static IP addresses</li>
+            <li>Managers use Raft to share/coordinate swarm state</li>
+            <li>Use cpu/ram constraints on services to improve safety,
+              or turn off worker support on manager nodes</li>
+          </ul>
+
         </section>
         
         <section>
           <h2>Enabling Swarm</h2>
 
-          <pre><code data-trim data-noescape>
+          <pre><code data-trim class="bash">
               # Run on manager node - this will output a SWARM_TOKEN
-              docker swarm init --advertise-addr [ip-addr]
+              $ docker swarm init --advertise-addr [ip-addr]
               
               # Run on worker nodes
               # use the token and ip-addr from command above
-              docker swarm join --token [swarm-token] [ip-addr]
+              $ docker swarm join --token [swarm-token] [ip-addr]
           </code></pre>
 
         </section>
@@ -202,7 +229,7 @@
             <li>Can optionally attach to an ingress network</li>
           </ul>
 
-          <pre><code data-trim data-noescape>
+          <pre><code data-trim class="bash">
               $ docker service create --replicas 3 --name myservice myimage
               $ docker service ls
               $ docker service rm myservice
@@ -222,7 +249,7 @@
             <li>Start/update/stop whole stack with one command</li>
           </ul>
 
-          <pre><code data-trim data-noescape>
+          <pre><code data-trim class="bash">
               $ docker stack deploy --compose-file demo.yml swarm-demo
               $ docker stack ls
               $ docker stack rm swarm-demo
@@ -249,6 +276,27 @@ services:
       restart_policy:
         condition: on-failure
           </code></pre>
+        </section>
+
+        <section>
+          <h2>Secrets</h2>
+
+          <p style="text-align: left;">
+            Simple mechanism for exposing keys, passwords to
+            containers
+          </p>
+
+          <pre><code data-trim class="bash">
+              # create a secret
+              $ echo "i-enjoy-jury-duty" | docker secret create my_secret -
+
+              # expose secret to a service or container
+              $ docker service create --name svc --secret my_secret myimage
+
+              # secrets are exposed as files under /run/secrets
+              $ docker exec svc.1 cat /run/secrets/my_secret
+          </code></pre>
+          
         </section>
 
         <section>
@@ -349,6 +397,12 @@ services:
 					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
 				]
 			});
+      Reveal.configure({
+        keyboard: {
+          40: 'next',
+          38: 'prev'
+        }
+      });      
 		</script>
 	</body>
 </html>
