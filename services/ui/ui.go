@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -16,47 +17,30 @@ import (
 
 const DATE_TZ = "America/Los_Angeles"
 
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
-
-func getOrSetToken(ctx *golf.Context) string {
-	token, _ := ctx.Cookie("demotoken")
-	if token == "" {
-		token = randSeq(20)
-		ctx.SetCookie("demotoken", token, 0)
-	}
-	return token
-}
-
-func newChildState() *ChildState {
-	return &ChildState{
+func newUiState() *UiState {
+	return &UiState{
 		LastUpdated:     "",
 		RequestCount:    0,
 		ErrorCount:      0,
 		LastError:       "",
-		RecentResponses: make([]ChildResponse, 0),
+		UiHostname:      os.Getenv("HOSTNAME"),
+		RecentResponses: make([]CounterResponse, 0),
 		lock:            &sync.Mutex{},
 	}
 }
 
-type ChildState struct {
+type UiState struct {
 	LastUpdated     string
 	RequestCount    int64
 	ErrorCount      int64
 	LastError       string
-	RecentResponses []ChildResponse
+	UiHostname      string
+	RecentResponses []CounterResponse
 
 	lock *sync.Mutex
 }
 
-type ChildResponse struct {
+type CounterResponse struct {
 	Hostname       string
 	RequestCount   int64
 	Version        string
@@ -84,11 +68,11 @@ func newHttpClient() *http.Client {
 	}
 }
 
-func requestChild(token string, loc *time.Location) (ChildResponse, error) {
-	url := "http://demo_counter:9000/" + token
+func requestCounter(loc *time.Location) (CounterResponse, error) {
+	url := "http://demo_counter:9000/"
 	resp, err := newHttpClient().Get(url)
 	if err != nil {
-		return ChildResponse{}, err
+		return CounterResponse{}, err
 	}
 	defer resp.Body.Close()
 
@@ -96,12 +80,12 @@ func requestChild(token string, loc *time.Location) (ChildResponse, error) {
 	decoder := json.NewDecoder(resp.Body)
 	err = decoder.Decode(&counter)
 	if err != nil {
-		return ChildResponse{}, err
+		return CounterResponse{}, err
 	}
 
 	startTime := time.Unix(0, counter.StartTimeNano)
 
-	return ChildResponse{
+	return CounterResponse{
 		Hostname:       counter.Hostname,
 		RequestCount:   counter.RequestCount,
 		Version:        counter.Version,
@@ -109,14 +93,14 @@ func requestChild(token string, loc *time.Location) (ChildResponse, error) {
 	}, nil
 }
 
-func (me *ChildState) HandleFrag(ctx *golf.Context) {
+func (me *UiState) CounterFrag(ctx *golf.Context) {
 	loc, err := time.LoadLocation(DATE_TZ)
 	if err != nil {
 		log.Printf("ERROR in LoadLocation for tz %s - %v\n", DATE_TZ, err)
 		return
 	}
 
-	resp, err := requestChild(getOrSetToken(ctx), loc)
+	resp, err := requestCounter(loc)
 
 	me.lock.Lock()
 	defer me.lock.Unlock()
@@ -166,10 +150,10 @@ func clockFragHandler(ctx *golf.Context) {
 func main() {
 	// turn off keepalive to see round-robin requests
 	rand.Seed(time.Now().UTC().UnixNano())
-	childState := newChildState()
+	uiState := newUiState()
 	app := golf.New()
 	app.View.SetTemplateLoader("templates", "templates/")
-	app.Get("/fragment/counter", childState.HandleFrag)
+	app.Get("/fragment/counter", uiState.CounterFrag)
 	app.Get("/fragment/clock", clockFragHandler)
 	app.Get("/", homeHandler)
 	app.Run(":9000")

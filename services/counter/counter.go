@@ -16,11 +16,9 @@ const VERSION = "1"
 func newCounter() *Counter {
 	return &Counter{
 		RequestCount:  0,
-		UniqueClients: 0,
 		Hostname:      os.Getenv("HOSTNAME"),
 		Version:       VERSION,
 		StartTimeNano: time.Now().UnixNano(),
-		clientTokens:  make(map[string]bool),
 		lock:          &sync.Mutex{},
 	}
 }
@@ -32,26 +30,20 @@ type Counter struct {
 	StartTimeNano int64
 	Version       string
 
-	clientTokens map[string]bool
-	lock         *sync.Mutex
+	lock *sync.Mutex
 }
 
-func (me *Counter) addReqAndSerialize(token string) ([]byte, error) {
+func (me *Counter) addReqAndSerialize() ([]byte, error) {
 	me.lock.Lock()
 	defer me.lock.Unlock()
 
 	me.RequestCount++
-	_, ok := me.clientTokens[token]
-	if !ok {
-		me.clientTokens[token] = true
-		me.UniqueClients++
-	}
 
 	return json.Marshal(me)
 }
 
 func (me *Counter) Handle(ctx *golf.Context) {
-	data, err := me.addReqAndSerialize(ctx.Param("token"))
+	data, err := me.addReqAndSerialize()
 	if err == nil {
 		ctx.SetHeader("content-type", "application/json")
 		ctx.Send(data)
@@ -76,6 +68,6 @@ func main() {
 
 	app := golf.New()
 	app.Get("/env", dumpEnv)
-	app.Get("/:token", counter.Handle)
+	app.Get("/", counter.Handle)
 	app.Run(":9000")
 }
